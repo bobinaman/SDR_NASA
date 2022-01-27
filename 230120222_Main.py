@@ -1,14 +1,15 @@
 
 import random
+import math as m
 from scipy.fft import fft, ifft,fftfreq
 import numpy as np
 from scipy import signal
 import matplotlib.pyplot as plt
 fs=10000
 Ts=1/fs
-Tsig= 50e-3
-T_pulse=1e-3
-T_delay = 1e-3
+Tsig= 50*Ts
+T_pulse=Ts
+T_delay = Ts
 t = np.linspace(0, Tsig, fs, endpoint=False)
 samplesNumber = len(t)
 numOfBits = int(np.floor(Tsig/T_pulse))
@@ -39,6 +40,20 @@ def generate_envelope_in_bit():
 	plt.plot(t_envelope,x_t_envelope)
 	return(t_envelope,x_t_envelope)
 
+def generate_envelope_sin():
+	x_t_sin_envelope=[]
+	t_envelope=np.linspace(0, T_pulse, int(np.floor(fs/numOfBits)), endpoint=False)
+	A=1
+	for i in range(samplesInBit):	#looping 200 times
+		sin_x_t = A*m.sin(t_envelope[i]*fs*3*m.pi)
+		x_t_sin_envelope.append(sin_x_t)
+
+	print("···········································")
+	print("samplesInBit y len t envelope",samplesInBit,len(t_envelope))
+	plt.figure()
+	plt.plot(t_envelope,x_t_sin_envelope)
+	return(t_envelope,x_t_sin_envelope)
+
 def generate_modulated_signal(x_t_envelope):
 	x_t = []
 	print(len(t))
@@ -55,7 +70,8 @@ def generate_modulated_signal(x_t_envelope):
 	return(x_t)
 
 
-[t_envelope,x_t_envelope]=generate_envelope_in_bit()
+#[t_envelope,x_t_envelope]=generate_envelope_in_bit()
+[t_envelope,x_t_envelope]=generate_envelope_sin()
 x_t = generate_modulated_signal(x_t_envelope)
 
 def plot_modulated_signal_and_FFT(x_t):
