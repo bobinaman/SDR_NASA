@@ -8,9 +8,9 @@ import math
 modulation=4 #4QAM
 fs=100000
 Ts=1/fs
-Tsig= 50e-3
-T_pulse=1e-3
-T_delay = 1e-3
+Tsig= 50*Ts
+T_pulse=Ts
+T_delay = Ts
 t = np.linspace(0, Tsig, fs, endpoint=False)
 samplesNumber = len(t)
 numOfBits = int(np.floor(Tsig/T_pulse))
