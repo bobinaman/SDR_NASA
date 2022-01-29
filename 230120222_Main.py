@@ -117,10 +117,10 @@ def plot_modulated_signal_and_FFT(x_t):
 data = initialize_bit_chain()
 T_sin_envelope=T_pulse/2
 [t_envelope,x_t_envelope]=generate_sinusoidal_envelope_in_bit(T_sin_envelope)
-#[t_envelope,x_t_envelope]=generate_envelope_in_bit()
-[xI_t,xQ_t] = generate_signal_BaseBand(x_t_envelope,data,modulation)
-plot_modulated_signal_and_FFT(xI_t)
-plot_modulated_signal_and_FFT(xQ_t)
+[t_envelope,x_t_envelope]=generate_envelope_in_bit()
+#[xI_t,xQ_t] = generate_signal_BaseBand(x_t_envelope,data,modulation)
+#plot_modulated_signal_and_FFT(xI_t)
+#plot_modulated_signal_and_FFT(xQ_t)
 
 
 
