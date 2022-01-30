@@ -5,9 +5,11 @@ import numpy as np
 from scipy import signal
 import matplotlib.pyplot as plt
 import math
+import cmath
 modulation=4 #4QAM
+
 fs=100000
-fc=1e3
+fc=1e5
 Ts=1/fs
 Tsig= 50*Ts
 T_pulse=Ts
@@ -17,7 +19,8 @@ samplesNumber = len(t)
 numOfBits = int(np.floor(Tsig/T_pulse))
 samplesInBit= int(np.floor(samplesNumber/numOfBits))
 print("bitnumber, samples number,bitSamples", numOfBits,samplesNumber,samplesInBit)
-
+print("fs:",fs,"fc:",fc,"Ts:",Ts,"Tsignal:",Tsig,"T_pulse:",T_pulse)
+#print("fs:",fs,"fc:",fc+"Ts:",Ts,"Tsignal:",Tsig,"T_pulse:",T_pulse)
 def Set_equal_dimensions_2_IQ(vect1,vect2):
 	##this fuction adds 0 to the shorter array in order to 
 	## have same dimension in both arrays
@@ -90,6 +93,55 @@ def initialize_bit_chain():
 		bits.append(bitValue)
 	return bits
 
+
+def generate_signal_BaseBand(x_t_envelope,data,Modulation_M):
+	va=1/math.sqrt(2)
+	
+	M = int(math.log2(Modulation_M))
+	for i in range(0,len(data),M):
+		symbol=[0,1]
+		for j in range(i,i+M):
+			symbol.append(data[i])
+
+		symbolstr=""
+		for n in range(len(symbol)):
+			symbolstr=symbolstr+str(symbol[n])
+
+		if(str(symbol)=="00"):
+			z = complex(-va,-va)
+		elif(str(symbol)=="10"):
+			z = complex(-va,va)
+		elif str(symbol)=="01":
+			z = complex(va,-va)		
+		elif(str(symbol)=="11"):
+			z = complex(va,va)
+		
+		v_I = z.real
+		v_Q = z.imag
+
+
+
+
+
+		t_IQ = t = np.linspace(0, Tsig, Ts, endpoint=False)
+
+		cos=math.cos(2*math.pi*fc*t_IQ[i])
+		sin=math.sin(2*math.pi*fc*t_IQ[i])
+		s_t = v_I*cos-v_Q*sin
+
+		
+
+
+
+		
+
+
+
+
+
+
+
+
 def generate_signal_BaseBand(x_t_envelope,data,Modulation_M):
 	modulation_bit_factor= int(math.log2(Modulation_M))
 	x_t = []
@@ -97,7 +149,6 @@ def generate_signal_BaseBand(x_t_envelope,data,Modulation_M):
 	xQ_t=[]
 	isInphase = True
 	for i in range(0,numOfBits,modulation_bit_factor):
-		
 		if isInphase:		
 			for m in range(0,modulation_bit_factor):
 				dataIndex=i
@@ -170,6 +221,18 @@ modulated_signal = generate_modulated_signal_InphaseANDQuadrature(fc,t,xI_t,xQ_t
 t_IQ = t = np.linspace(0, Tsig, len(xI_t), endpoint=False)
 plt.figure()
 plt.plot(t_IQ,modulated_signal)
+
+
+plt.figure()
+plt.subplot(3,1,1)
+plt.plot(t_IQ,xI_t)
+
+plt.subplot(3,1,2) 
+plt.plot(t_IQ,xQ_t)
+
+plt.subplot(3,1,3) 
+plt.plot(t_IQ,modulated_signal)
+#plt.plot(t_IQ,xI_t)
 plt.show()
 #autocorrelation1=np.correlate(x_t, x_t)
 #autocorrelation_delay = np.correlate(x_t-T_delay)
