@@ -1,3 +1,5 @@
+import Math_Functions
+from csv import QUOTE_ALL
 import random
 import re
 from scipy.fft import fft, ifft,fftfreq
@@ -9,7 +11,7 @@ import cmath
 modulation=4 #4QAM
 
 fs=100000
-fc=1e5
+fc=2e5
 Ts=1/fs
 Tsig= 50*Ts
 T_pulse=Ts
@@ -21,24 +23,10 @@ samplesInBit= int(np.floor(samplesNumber/numOfBits))
 print("bitnumber, samples number,bitSamples", numOfBits,samplesNumber,samplesInBit)
 print("fs:",fs,"fc:",fc,"Ts:",Ts,"Tsignal:",Tsig,"T_pulse:",T_pulse)
 #print("fs:",fs,"fc:",fc+"Ts:",Ts,"Tsignal:",Tsig,"T_pulse:",T_pulse)
-def Set_equal_dimensions_2_IQ(vect1,vect2):
-	##this fuction adds 0 to the shorter array in order to 
-	## have same dimension in both arrays
-	len1 = len(vect1)
-	len2 = len(vect2)
-	if(len1>len2):
-		for i in range(len1-len2):
-			vect2.append(0)
-	if(len2>len1):
-		for i in range(len2-len1):
-			vect2.append(0)
-
-	return(vect1,vect2)
 
 
 
-
-	return(xI_t,xQ_t)
+	
 
 def operating_array(vect1,vect2,operation):
 	if(operation=="dot product"):
@@ -93,53 +81,58 @@ def initialize_bit_chain():
 		bits.append(bitValue)
 	return bits
 
+def LocalOscilator(fol,phase,signal,Tsignal1,numOfsamples):
+	t=np.linspace(0,Tsignal1,numOfsamples)
+	modulatedsignal= []*numOfsamples
+	for i in range(len(signal)):
+		modulatedsignal.append(math.cos(2*math.pi*fol*t[i]+phase)*signal[i])
+	return modulatedsignal
 
-def generate_signal_BaseBand(x_t_envelope,data,Modulation_M):
+def generate_signal_BaseBand2(x_t_envelope,data,Modulation_M):
 	va=1/math.sqrt(2)
 	
 	M = int(math.log2(Modulation_M))
+	s_t=[]*fs
+	Inphases=[]*fs
+	Quadratures=[]*fs
 	for i in range(0,len(data),M):
-		symbol=[0,1]
+		symbol=[]*M
 		for j in range(i,i+M):
-			symbol.append(data[i])
+			symbol.append(data[j])
 
 		symbolstr=""
 		for n in range(len(symbol)):
 			symbolstr=symbolstr+str(symbol[n])
 
-		if(str(symbol)=="00"):
+		if(str(symbolstr)=="00"):
 			z = complex(-va,-va)
-		elif(str(symbol)=="10"):
+		elif(str(symbolstr)=="10"):
 			z = complex(-va,va)
-		elif str(symbol)=="01":
+		elif str(symbolstr)=="01":
 			z = complex(va,-va)		
-		elif(str(symbol)=="11"):
+		elif(str(symbolstr)=="11"):
 			z = complex(va,va)
 		
 		v_I = z.real
 		v_Q = z.imag
+		for i in range(samplesInBit):
+			Inphases.append(v_I)
+			Quadratures.append(v_Q)
+		Tsig_Modulated=Tsig/M
 
+	t_IQ = np.linspace(0, T_pulse/M, fs, endpoint=False)
 
-
-
-
-		t_IQ = t = np.linspace(0, Tsig, Ts, endpoint=False)
-
-		cos=math.cos(2*math.pi*fc*t_IQ[i])
-		sin=math.sin(2*math.pi*fc*t_IQ[i])
-		s_t = v_I*cos-v_Q*sin
-
-		
-
-
-
-		
-
-
-
-
-
-
+	s_I_t = LocalOscilator(fc,0,Inphases,Tsig/M,fs)
+	s_Q_t = LocalOscilator(fc,-math.pi/2,Quadratures,Tsig/M,fs)
+	s_t = operating_array(s_I_t,s_Q_t,"substraction")
+	
+	#cos=math.cos(2*math.pi*fc*t_IQ)
+	#sin=math.sin(2*math.pi*fc*t_IQ)
+	#s_I_t= operating_array(v_I,cos,"dot product")
+	#s_Q_t= operating_array(v_Q,sin,"dot product")
+	#s_t = operating_array(v_I*cos,v_Q*sin,"substraction")
+	return s_t,s_I_t,s_Q_t,Inphases,Quadratures
+		#s_t = v_I*cos-v_Q*sin
 
 
 def generate_signal_BaseBand(x_t_envelope,data,Modulation_M):
@@ -181,12 +174,13 @@ def generate_signal_BaseBand(x_t_envelope,data,Modulation_M):
 	return(xI_t,xQ_t)
 def generate_modulated_signal_InphaseANDQuadrature(fc,t,xI_t,xQ_t):
 	
-	[xI_t,xQ_t] = Set_equal_dimensions_2_IQ(xI_t,xQ_t)
+	[xI_t,xQ_t] = Math_Functions.Set_equal_dimensions_2_IQ(xI_t,xQ_t)
 	##esta mal el Tsig hay que cambairlo por el tiempo nuevo tras modular
 	##ya que esto es sin modulacion
 	t_IQ = t = np.linspace(0, Tsig, len(xI_t), endpoint=False)
 	cos=[]
 	sin=[]
+
 	for i in range(len(t_IQ)):
 		cos.append(math.cos(2*math.pi*fc*t_IQ[i]))
 		sin.append(math.sin(2*math.pi*fc*t_IQ[i]))
@@ -212,26 +206,29 @@ data = initialize_bit_chain()
 T_sin_envelope=T_pulse/2
  #[t_envelope,x_t_envelope]=generate_sinusoidal_envelope_in_bit(T_sin_envelope)
 [t_envelope,x_t_envelope]=generate_envelope_in_bit()
-[xI_t,xQ_t] = generate_signal_BaseBand(x_t_envelope,data,modulation)
-modulated_signal = generate_modulated_signal_InphaseANDQuadrature(fc,t,xI_t,xQ_t)
+[s_t_mod,sI_t,sQ_t,inphases,quadratures] = generate_signal_BaseBand2(x_t_envelope,data,modulation)
+
+modulated_signal = generate_modulated_signal_InphaseANDQuadrature(fc,t,sI_t,sQ_t)
 
 # plot_modulated_signal_and_FFT(xI_t)
 # plot_modulated_signal_and_FFT(xQ_t)
 
-t_IQ = t = np.linspace(0, Tsig, len(xI_t), endpoint=False)
-plt.figure()
-plt.plot(t_IQ,modulated_signal)
+t_IQ = t = np.linspace(0, Tsig, len(sI_t), endpoint=False)
+# plt.figure(1)
+# plt.plot(t_IQ,modulated_signal)
 
 
-plt.figure()
-plt.subplot(3,1,1)
-plt.plot(t_IQ,xI_t)
-
-plt.subplot(3,1,2) 
-plt.plot(t_IQ,xQ_t)
-
-plt.subplot(3,1,3) 
-plt.plot(t_IQ,modulated_signal)
+plt.figure(2)
+plt.subplot(5,1,1)
+plt.plot(t_IQ,inphases)
+plt.subplot(5,1,2)
+plt.plot(t_IQ,sI_t)
+plt.subplot(5,1,3) 
+plt.plot(t_IQ,quadratures)
+plt.subplot(5,1,4) 
+plt.plot(t_IQ,sQ_t)
+plt.subplot(5,1,5) 
+plt.plot(t_IQ,s_t_mod)
 #plt.plot(t_IQ,xI_t)
 plt.show()
 #autocorrelation1=np.correlate(x_t, x_t)
